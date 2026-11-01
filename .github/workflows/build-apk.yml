@@ -14,12 +14,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Android project
-        run: |
-          unzip -o TaungThuEain_CropYield_APK_Project.zip -d . -x '.github/workflows/*'
-          test -f app/build.gradle
-          test -f app/src/main/assets/index.html
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -29,19 +23,24 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.13'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: false
+        uses: android-actions/setup-android@v3
 
-      - name: Build APK
-        run: gradle assembleDebug
+      - name: Extract API 36 Project
+        run: |
+          unzip -o TaungThuEain_API36_Project_v1_2.zip -d /tmp/api36
+          cp -a /tmp/api36/app .
+          cp /tmp/api36/build.gradle .
+          cp /tmp/api36/settings.gradle .
+          cp /tmp/api36/gradle.properties .
+
+      - name: Build Debug APK
+        run: gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TaungThuEain-Crop-Yield-APK
+          name: TaungThuEain-API36-APK
           path: app/build/outputs/apk/debug/app-debug.apk
