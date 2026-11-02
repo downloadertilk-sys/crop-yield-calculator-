@@ -103,8 +103,6 @@ jobs:
 
       - name: Verify Android Project
         run: |
-          echo "Checking project files..."
-
           test -d app
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
@@ -122,10 +120,15 @@ jobs:
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > app/release-key.jks
 
+          if [ ! -s app/release-key.jks ]; then
+            echo "ERROR: Signing key is empty!"
+            exit 1
+          fi
+
       - name: Build Signed Release APK and AAB
         if: env.HAS_SIGNING == 'true'
         env:
-          ANDROID_KEYSTORE_PATH: app/release-key.jks
+          ANDROID_KEYSTORE_PATH: release-key.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
