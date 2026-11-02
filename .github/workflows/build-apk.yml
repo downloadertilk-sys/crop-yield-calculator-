@@ -47,7 +47,7 @@ jobs:
 
       - name: Extract API 36 Project
         run: |
-          ZIP_FILE="TaungThuEain_API36_Project_v1_2.zip"
+          ZIP_FILE="CropYield_v1_4_Project.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Project ZIP not found!"
