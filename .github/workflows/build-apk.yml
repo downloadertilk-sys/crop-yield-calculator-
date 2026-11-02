@@ -32,11 +32,34 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+
+          if [ ! -d "$SDK_ROOT" ]; then
+            echo "ERROR: Android SDK not found!"
+            exit 1
+          fi
+
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager not found!"
+            exit 1
+          fi
+
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
+          echo "Android SDK configured successfully."
 
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Install Android SDK 36
         run: |
@@ -69,9 +92,25 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
+            echo "ERROR: settings.gradle not found!"
+            exit 1
+          fi
+
           cp -a "$PROJECT_DIR/." .
 
           echo "Project v1.4 extracted successfully."
+
+      - name: Verify Android Project
+        run: |
+          echo "Checking project files..."
+
+          test -d app
+          test -f app/build.gradle
+          test -f app/src/main/AndroidManifest.xml
+          test -f app/src/main/assets/index.html
+
+          echo "Project verification successful."
 
       - name: Build Debug APK
         run: gradle --no-daemon assembleDebug
@@ -90,7 +129,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: gradle --no-daemon assembleRelease bundleRelease
+        run: |
+          gradle --no-daemon assembleRelease bundleRelease
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -111,4 +151,5 @@ jobs:
 
       - name: Remove Signing Key
         if: always()
-        run: rm -f app/release-key.jks
+        run: |
+          rm -f app/release-key.jks
