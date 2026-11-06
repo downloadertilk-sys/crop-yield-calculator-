@@ -70,7 +70,7 @@ jobs:
 
       - name: Extract v1.4 Project ZIP
         run: |
-          ZIP_FILE="CropYield_v1_4_Project.zip"
+          ZIP_FILE="CropYield_v1.4_Project.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Project ZIP not found!"
