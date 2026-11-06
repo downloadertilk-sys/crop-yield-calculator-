@@ -1,4 +1,3 @@
-
 name: Build Signed Release APK
 
 on:
@@ -69,41 +68,50 @@ jobs:
             "platform-tools"
 
       - name: Extract v1.4 Project ZIP
+        shell: bash
         run: |
           ZIP_FILE="CropYield_v1.4_Project.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Project ZIP not found!"
+            echo "ERROR: Project ZIP not found: $ZIP_FILE"
+            echo "Files in repository:"
+            ls -la
             exit 1
           fi
 
-          mkdir -p /tmp/api36
-          unzip -o "$ZIP_FILE" -d /tmp/api36
+          EXTRACT_DIR="$RUNNER_TEMP/crop-yield-project"
+          mkdir -p "$EXTRACT_DIR"
+          unzip -o "$ZIP_FILE" -d "$EXTRACT_DIR"
 
-          PROJECT_DIR="/tmp/api36/project_v1_4"
+          # Find the actual Android project root. The ZIP may contain the
+          # project files at its root or inside a single enclosing folder.
+          PROJECT_DIR=""
+          while IFS= read -r candidate; do
+            if [ -d "$candidate/app" ] && \
+               [ -f "$candidate/build.gradle" ] && \
+               [ -f "$candidate/settings.gradle" ]; then
+              PROJECT_DIR="$candidate"
+              break
+            fi
+          done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\n' | sort)
 
-          if [ ! -d "$PROJECT_DIR/app" ]; then
-            echo "ERROR: app folder not found!"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Could not locate Android project root in ZIP."
+            echo "Extracted ZIP contents:"
+            find "$EXTRACT_DIR" -maxdepth 5 -print
             exit 1
           fi
 
-          if [ ! -f "$PROJECT_DIR/build.gradle" ]; then
-            echo "ERROR: build.gradle not found!"
-            exit 1
-          fi
+          echo "Android project found at: $PROJECT_DIR"
+          cp -a "$PROJECT_DIR/." "$GITHUB_WORKSPACE/"
 
-          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
-            echo "ERROR: settings.gradle not found!"
-            exit 1
-          fi
-
-          cp -a "$PROJECT_DIR/." .
-
-          echo "Project v1.4 extracted successfully."
+          echo "Project extracted successfully."
 
       - name: Verify Android Project
         run: |
           test -d app
+          test -f build.gradle
+          test -f settings.gradle
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
           test -f app/src/main/assets/index.html
@@ -128,7 +136,7 @@ jobs:
       - name: Build Signed Release APK and AAB
         if: env.HAS_SIGNING == 'true'
         env:
-          ANDROID_KEYSTORE_PATH: release-key.jks
+          ANDROID_KEYSTORE_PATH: app/release-key.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -138,7 +146,7 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: TaungThuEain-v1.4-Debug-APK
+          name: Crop-Yield-Calculator-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -146,7 +154,7 @@ jobs:
         if: env.HAS_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: TaungThuEain-v1.4-Release-APK-and-AAB
+          name: Crop-Yield-Calculator-Release-APK-and-AAB
           path: |
             app/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
