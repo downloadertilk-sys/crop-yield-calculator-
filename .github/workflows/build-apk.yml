@@ -83,8 +83,6 @@ jobs:
           mkdir -p "$EXTRACT_DIR"
           unzip -o "$ZIP_FILE" -d "$EXTRACT_DIR"
 
-          # Find the actual Android project root. The ZIP may contain the
-          # project files at its root or inside a single enclosing folder.
           PROJECT_DIR=""
           while IFS= read -r candidate; do
             if [ -d "$candidate/app" ] && \
@@ -93,7 +91,7 @@ jobs:
               PROJECT_DIR="$candidate"
               break
             fi
-          done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\n' | sort)
+          done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\\n' | sort)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: Could not locate Android project root in ZIP."
@@ -104,7 +102,6 @@ jobs:
 
           echo "Android project found at: $PROJECT_DIR"
           cp -a "$PROJECT_DIR/." "$GITHUB_WORKSPACE/"
-
           echo "Project extracted successfully."
 
       - name: Verify Android Project
@@ -115,7 +112,6 @@ jobs:
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
           test -f app/src/main/assets/index.html
-
           echo "Project verification successful."
 
       - name: Build Debug APK
@@ -136,7 +132,7 @@ jobs:
       - name: Build Signed Release APK and AAB
         if: env.HAS_SIGNING == 'true'
         env:
-          ANDROID_KEYSTORE_PATH: app/release-key.jks
+          ANDROID_KEYSTORE_PATH: release-key.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
