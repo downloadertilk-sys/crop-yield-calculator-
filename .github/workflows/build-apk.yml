@@ -1,3 +1,4 @@
+
 name: Build Signed Release APK
 
 on:
@@ -54,8 +55,6 @@ jobs:
           echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
-          echo "Android SDK configured successfully."
-
       - name: Accept Android SDK licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -67,42 +66,47 @@ jobs:
             "build-tools;35.0.0" \
             "platform-tools"
 
-      - name: Extract v1.4 Project ZIP
+      - name: Extract Android Project ZIP
         shell: bash
         run: |
           ZIP_FILE="CropYield_v1.4_Project.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Project ZIP not found: $ZIP_FILE"
-            echo "Files in repository:"
+            echo "ERROR: Project ZIP not found!"
             ls -la
             exit 1
           fi
 
           EXTRACT_DIR="$RUNNER_TEMP/crop-yield-project"
           mkdir -p "$EXTRACT_DIR"
+
           unzip -o "$ZIP_FILE" -d "$EXTRACT_DIR"
 
-          PROJECT_DIR=""
-          while IFS= read -r candidate; do
-            if [ -d "$candidate/app" ] && \
-               [ -f "$candidate/build.gradle" ] && \
-               [ -f "$candidate/settings.gradle" ]; then
-              PROJECT_DIR="$candidate"
-              break
-            fi
-          done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\\n' | sort)
+          # ZIP ထဲက Project သည် အပေါ်ဆုံး Folder တွင် တိုက်ရိုက်ရှိသည်။
+          PROJECT_DIR="$EXTRACT_DIR"
 
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Could not locate Android project root in ZIP."
-            echo "Extracted ZIP contents:"
-            find "$EXTRACT_DIR" -maxdepth 5 -print
+          echo "Checking Android project files..."
+
+          ls -la "$PROJECT_DIR"
+
+          if [ ! -d "$PROJECT_DIR/app" ]; then
+            echo "ERROR: app folder not found!"
             exit 1
           fi
 
-          echo "Android project found at: $PROJECT_DIR"
+          if [ ! -f "$PROJECT_DIR/build.gradle" ]; then
+            echo "ERROR: build.gradle not found!"
+            exit 1
+          fi
+
+          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
+            echo "ERROR: settings.gradle not found!"
+            exit 1
+          fi
+
           cp -a "$PROJECT_DIR/." "$GITHUB_WORKSPACE/"
-          echo "Project extracted successfully."
+
+          echo "Android project copied successfully."
 
       - name: Verify Android Project
         run: |
@@ -112,6 +116,7 @@ jobs:
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
           test -f app/src/main/assets/index.html
+
           echo "Project verification successful."
 
       - name: Build Debug APK
