@@ -1,3 +1,4 @@
+
 name: Build Signed Release APK
 
 on:
@@ -54,8 +55,6 @@ jobs:
           echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
-          echo "Android SDK configured successfully."
-
       - name: Accept Android SDK licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -67,14 +66,13 @@ jobs:
             "build-tools;35.0.0" \
             "platform-tools"
 
-      - name: Extract v1.4 Project ZIP
+      - name: Extract Android Project ZIP
         shell: bash
         run: |
           ZIP_FILE="CropYield_v1.4_Project.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Project ZIP not found: $ZIP_FILE"
-            echo "Files in repository:"
+            echo "ERROR: Project ZIP not found!"
             ls -la
             exit 1
           fi
@@ -84,25 +82,30 @@ jobs:
           unzip -o "$ZIP_FILE" -d "$EXTRACT_DIR"
 
           PROJECT_DIR=""
-          while IFS= read -r candidate; do
-            if [ -d "$candidate/app" ] && \
-               [ -f "$candidate/build.gradle" ] && \
-               [ -f "$candidate/settings.gradle" ]; then
-              PROJECT_DIR="$candidate"
-              break
-            fi
-          done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\\n' | sort)
+
+          if [ -d "$EXTRACT_DIR/app" ] && \
+             [ -f "$EXTRACT_DIR/build.gradle" ] && \
+             [ -f "$EXTRACT_DIR/settings.gradle" ]; then
+            PROJECT_DIR="$EXTRACT_DIR"
+          else
+            while IFS= read -r -d '' candidate; do
+              if [ -d "$candidate/app" ] && \
+                 [ -f "$candidate/build.gradle" ] && \
+                 [ -f "$candidate/settings.gradle" ]; then
+                PROJECT_DIR="$candidate"
+                break
+              fi
+            done < <(find "$EXTRACT_DIR" -type f -name settings.gradle -printf '%h\0')
+          fi
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Could not locate Android project root in ZIP."
-            echo "Extracted ZIP contents:"
+            echo "ERROR: Android project root not found!"
             find "$EXTRACT_DIR" -maxdepth 5 -print
             exit 1
           fi
 
-          echo "Android project found at: $PROJECT_DIR"
+          echo "Project found: $PROJECT_DIR"
           cp -a "$PROJECT_DIR/." "$GITHUB_WORKSPACE/"
-          echo "Project extracted successfully."
 
       - name: Verify Android Project
         run: |
